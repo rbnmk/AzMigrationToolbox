@@ -87,14 +87,20 @@ if ($vmStatus.Statuses.displaystatus -match "VM Running") {
 }
 
 ### Get the OSDisk SKU
-$OsDiskSku = (Get-AzResource -ResourceId $virtualMachine.StorageProfile.OsDisk.ManagedDisk.Id | Select-Object Name, ResourceGroupName | Get-AzDisk).Sku
-$OsDiskSkuName = (Get-AzResource -ResourceId $virtualMachine.StorageProfile.OsDisk.ManagedDisk.Id | Select-Object Name, ResourceGroupName | Get-AzDisk).Sku.Name
-$OsDiskSkuTier = (Get-AzResource -ResourceId $virtualMachine.StorageProfile.OsDisk.ManagedDisk.Id | Select-Object Name, ResourceGroupName | Get-AzDisk).Sku.Tier
+
+$OsDisk = Get-AzResource -ResourceId $virtualMachine.StorageProfile.OsDisk.ManagedDisk.Id | Select-Object Name, ResourceGroupName | Get-AzDisk
+$OsDiskSku = $osDisk.Sku
+$OsDiskSkuName = $osDisk.Sku.Name
+$OsDiskSkuTier = $osDisk.Sku.Tier
+$OsDiskTier = $osDisk.Tier
+$OsDiskIOPSReadWrite = $osDisk.DiskIOPSReadWrite
+$OsDiskMBpsReadWrite = $osDisk.DiskMBpsReadWrite
+$OsDiskCaching = $datadisk.Caching
 $OsDiskCaching = $virtualMachine.StorageProfile.OsDisk.Caching
 
 switch ($OsDiskSkuName) {
-    "StandardSSD_LRS" { $OsDiskSkuName = "Standard_LRS" }
-    default {}
+    "StandardSSD_LRS" { $OsDiskSnapShotSkuName = "Standard_LRS" }
+    default { $OsDiskSnapShotSkuName = $OsDiskSkuName }
 }
 
 Write-Verbose "$VMName OSDisk: $($virtualMachine.StorageProfile.OsDisk.Name)"
@@ -107,7 +113,7 @@ Write-Verbose "$VMName OSDisk Caching: $($OsDiskCaching)"
 $snapshotConfigParams = @{
     SourceUri = $virtualMachine.StorageProfile.OsDisk.ManagedDisk.Id
     Location = $Location
-    SkuName = $OsDiskSkuName
+    SkuName = $OsDiskSnapShotSkuName
     CreateOption = 'copy'
 }
 $Snapshot = New-AzSnapshotConfig @snapshotConfigParams
@@ -147,6 +153,9 @@ $Snapshots += [PSCustomObject]@{
     skuName = $OsdiskSkuName
     skuTier = $OsDiskSkuTier
     caching = $OsDiskCaching
+    Tier = $OsDiskTier
+    IOPSReadWrite = $OsDiskIOPSReadWrite
+    DataDiskMBpsReadWrite = $OsDiskMBpsReadWrite
 }
 
 ### Create the snapshot(s) for the Data disks of the supplied VM
@@ -161,14 +170,19 @@ else {
     else {
         foreach ($datadisk in $virtualMachine.StorageProfile.DataDisks | Sort-Object Lun) {
 
-            $DataDiskSku = (Get-AzResource -ResourceId $datadisk.ManagedDisk.Id | Select-Object Name, ResourceGroupName | Get-AzDisk).Sku
-            $DataDiskDiskSkuName = (Get-AzResource -ResourceId $datadisk.ManagedDisk.Id | Select-Object Name, ResourceGroupName | Get-AzDisk).Sku.Name
-            $DataDiskSkuTier = (Get-AzResource -ResourceId $datadisk.ManagedDisk.Id | Select-Object Name, ResourceGroupName | Get-AzDisk).Sku.Tier
+            $Disk = Get-AzResource -ResourceId $datadisk.ManagedDisk.Id | Select-Object Name, ResourceGroupName | Get-AzDisk
+
+            $DataDiskSku = $Disk.Sku
+            $DataDiskDiskSkuName = $Disk.Sku.Name
+            $DataDiskSkuTier = $Disk.Sku.Tier
+            $DataDiskTier = $Disk.Tier
+            $DataDiskIOPSReadWrite = $Disk.DiskIOPSReadWrite
+            $DataDiskMBpsReadWrite = $Disk.DiskMBpsReadWrite
             $DataDiskCaching = $datadisk.Caching
 
             switch ($DataDiskDiskSkuName) {
-                "StandardSSD_LRS" { $DataDiskDiskSkuName = "Standard_LRS" }
-                default {}
+                "StandardSSD_LRS" { $DataDiskSnapshotSkuName = "Standard_LRS" }
+                default { $DataDiskSnapshotSkuName = $DataDiskDiskSkuName }
             }
 
             Write-Verbose "$VMName DataDisk: $($datadisk.Name)"
@@ -180,7 +194,7 @@ else {
             $snapshotConfigParams = @{
                 SourceUri = $datadisk.ManagedDisk.Id
                 Location = $Location
-                SkuName = $DataDiskDiskSkuName
+                SkuName = $DataDiskSnapshotSkuName
                 CreateOption = 'copy'
             }
             $Snapshot = New-AzSnapshotConfig @snapshotConfigParams
@@ -225,6 +239,9 @@ else {
                 skuName = $DataDiskDiskSkuName
                 skuTier = $DataDiskSkuTier
                 caching = $DataDiskCaching
+                Tier = $DataDiskTier
+                IOPSReadWrite = $DataDiskIOPSReadWrite
+                DataDiskMBpsReadWrite = $DataDiskMBpsReadWrite
             }  
         }
     }

@@ -84,13 +84,14 @@ foreach ($existingSnapshot in $Snapshots) {
             Location         = $Snapshot.Location
             SourceResourceId = $Snapshot.Id
             SkuName          = $existingSnapshot.skuName
+            Tier             = $existingSnapshot.Tier
             CreateOption     = 'Copy'
             ErrorAction      = 'Stop'
         }
 
-        if ($existingSnapshot.OsType) {
-            $diskConfigParams.OsType = $existingSnapshot.OsType
-        }
+        if ($existingSnapshot.DiskIOPSReadWrite) { $diskConfigParams.Add("DiskIOPSReadWrite", $existingSnapshot.DiskIOPSReadWrite) }
+        if ($existingSnapshot.DiskIOPSReadWrite) { $diskConfigParams.Add("DiskMBpsReadWrite", $existingSnapshot.DiskMBpsReadWrite) }
+        if ($existingSnapshot.OsType) { $diskConfigParams.add("OsType", $existingSnapshot.OsType) }
 
         $diskConfig = New-AzDiskConfig @diskConfigParams
     }

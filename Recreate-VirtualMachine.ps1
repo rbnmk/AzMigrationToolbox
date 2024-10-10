@@ -45,10 +45,76 @@ param(
             dstVirtualMachineVirtualNetworkResourceGroupName = "rg2"; 
             dstVirtualMachineVirtualNetworkSubnetName        = "default"
         }
+        @{
+            srcVirtualMachineName                            = "vm5"; 
+            srcVirtualMachineResourceGroupName               = "rg1"; 
+            srcVirtualMachineSubscriptionId                  = "49170441-ebef-47c3-9905-70ee5fdb7d38"; 
+            dstVirtualMachineName                            = "vm5tovm2" ; 
+            dstVirtualMachineResourceGroupName               = "rg2"; 
+            dstVirtualMachineSubscriptionId                  = "49170441-ebef-47c3-9905-70ee5fdb7d38"; 
+            dstVirtualMachineVirtualNetworkName              = "vnet"; 
+            dstVirtualMachineVirtualNetworkResourceGroupName = "rg2"; 
+            dstVirtualMachineVirtualNetworkSubnetName        = "default"
+        }
+        @{
+            srcVirtualMachineName                            = "vm6"; 
+            srcVirtualMachineResourceGroupName               = "rg1"; 
+            srcVirtualMachineSubscriptionId                  = "49170441-ebef-47c3-9905-70ee5fdb7d38"; 
+            dstVirtualMachineName                            = "vm6tovm2" ; 
+            dstVirtualMachineResourceGroupName               = "rg2"; 
+            dstVirtualMachineSubscriptionId                  = "49170441-ebef-47c3-9905-70ee5fdb7d38"; 
+            dstVirtualMachineVirtualNetworkName              = "vnet"; 
+            dstVirtualMachineVirtualNetworkResourceGroupName = "rg2"; 
+            dstVirtualMachineVirtualNetworkSubnetName        = "default"
+        }
+        @{
+            srcVirtualMachineName                            = "vm7"; 
+            srcVirtualMachineResourceGroupName               = "rg1"; 
+            srcVirtualMachineSubscriptionId                  = "49170441-ebef-47c3-9905-70ee5fdb7d38"; 
+            dstVirtualMachineName                            = "vm7tovm2" ; 
+            dstVirtualMachineResourceGroupName               = "rg2"; 
+            dstVirtualMachineSubscriptionId                  = "49170441-ebef-47c3-9905-70ee5fdb7d38"; 
+            dstVirtualMachineVirtualNetworkName              = "vnet"; 
+            dstVirtualMachineVirtualNetworkResourceGroupName = "rg2"; 
+            dstVirtualMachineVirtualNetworkSubnetName        = "default"
+        }
+        @{
+            srcVirtualMachineName                            = "vm8"; 
+            srcVirtualMachineResourceGroupName               = "rg1"; 
+            srcVirtualMachineSubscriptionId                  = "49170441-ebef-47c3-9905-70ee5fdb7d38"; 
+            dstVirtualMachineName                            = "vm8tovm2" ; 
+            dstVirtualMachineResourceGroupName               = "rg2"; 
+            dstVirtualMachineSubscriptionId                  = "49170441-ebef-47c3-9905-70ee5fdb7d38"; 
+            dstVirtualMachineVirtualNetworkName              = "vnet"; 
+            dstVirtualMachineVirtualNetworkResourceGroupName = "rg2"; 
+            dstVirtualMachineVirtualNetworkSubnetName        = "default"
+        }
+        @{
+            srcVirtualMachineName                            = "vm9"; 
+            srcVirtualMachineResourceGroupName               = "rg1"; 
+            srcVirtualMachineSubscriptionId                  = "49170441-ebef-47c3-9905-70ee5fdb7d38"; 
+            dstVirtualMachineName                            = "vm9tovm2" ; 
+            dstVirtualMachineResourceGroupName               = "rg2"; 
+            dstVirtualMachineSubscriptionId                  = "49170441-ebef-47c3-9905-70ee5fdb7d38"; 
+            dstVirtualMachineVirtualNetworkName              = "vnet"; 
+            dstVirtualMachineVirtualNetworkResourceGroupName = "rg2"; 
+            dstVirtualMachineVirtualNetworkSubnetName        = "default"
+        }
+        @{
+            srcVirtualMachineName                            = "vm10"; 
+            srcVirtualMachineResourceGroupName               = "rg1"; 
+            srcVirtualMachineSubscriptionId                  = "49170441-ebef-47c3-9905-70ee5fdb7d38"; 
+            dstVirtualMachineName                            = "vm10tovm2" ; 
+            dstVirtualMachineResourceGroupName               = "rg2"; 
+            dstVirtualMachineSubscriptionId                  = "49170441-ebef-47c3-9905-70ee5fdb7d38"; 
+            dstVirtualMachineVirtualNetworkName              = "vnet"; 
+            dstVirtualMachineVirtualNetworkResourceGroupName = "rg2"; 
+            dstVirtualMachineVirtualNetworkSubnetName        = "default"
+        }
     )
 )
 
-$virtualMachineMappingConfig | Foreach-Object -ThrottleLimit 5 -Parallel {
+$virtualMachineMappingConfig | Foreach-Object -ThrottleLimit 10 -Parallel {
 
     Write-Verbose "Processing VM: $($_.srcVirtualMachineName)"
 
@@ -98,6 +164,8 @@ $virtualMachineMappingConfig | Foreach-Object -ThrottleLimit 5 -Parallel {
 
     Write-Host $($VmFromManagedDisksParameters | Format-Table | Out-String)
 
+    Update-AzConfig -DisplayRegionIdentified $false
     .\Create-VmFromManagedDisks.ps1 @VmFromManagedDisksParameters
+    Update-AzConfig -DisplayRegionIdentified $true
     
 }

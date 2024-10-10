@@ -12,8 +12,8 @@ param(
     [parameter(Mandatory = $false)] $planConfig
 )
 
+# Register EncryptionAtHost feature
 Register-AzProviderFeature -FeatureName "EncryptionAtHost" -ProviderNamespace "Microsoft.Compute" | Out-Null
-Update-AzConfig -DisplayRegionIdentified $false | Out-Null
 
 # Initialize virtual machine configuration
 $vmConfigParams = @{
@@ -111,5 +111,3 @@ $config = @{
 }
 $nic | Set-AzNetworkInterfaceIpConfig @config -Primary | Out-Null
 $nic | Set-AzNetworkInterface | Out-Null
-
-Update-AzConfig -DisplayRegionIdentified $true | Out-Null
