@@ -1,25 +1,3 @@
-<#
-.SYNOPSIS
-Script for creating Snapshots of all disks of a single VM and create a variable for you to use. 
-You can use this to create a managed disk by using an other command after creating the snapshot.
-
-.DESCRIPTION
-This script is intended to be run from PowerShell in your current AzContext
-
-.EXAMPLE
-$Snapshots = .\Create-AzVmSnapshots.ps1 `
-                    -vmName FILESERVER `
-                    -resourceGroupName Servers
-
-.EXAMPLE
-$osDiskSnapshot = .\Create-AzVmSnapshots.ps1 `
-                    -vmName FILESERVER `
-                    -resourceGroupName Servers `
-                    -osDiskOnly
-
-Created by RBNMK
-#>
-
 [CmdletBinding()]
 param(
     [parameter(mandatory = $true)] [string] $vmName,
@@ -54,8 +32,8 @@ catch {
 Try {
     $vmParams = @{
         ResourceGroupName = $resourceGroupName
-        Name = $vmName
-        ErrorAction = 'Stop'
+        Name              = $vmName
+        ErrorAction       = 'Stop'
     }
     $virtualMachine = Get-AzVM @vmParams
 }
@@ -66,8 +44,8 @@ catch {
 
 $vmStatusParams = @{
     ResourceGroupName = $resourceGroupName
-    Name = $vmName
-    Status = $true
+    Name              = $vmName
+    Status            = $true
 }
 $vmStatus = Get-AzVM @vmStatusParams
 
@@ -111,32 +89,35 @@ Write-Verbose "$VMName OSDisk Caching: $($OsDiskCaching)"
 
 ### Create the snapshot for the OS Disk of the supplied VM
 $snapshotConfigParams = @{
-    SourceUri = $virtualMachine.StorageProfile.OsDisk.ManagedDisk.Id
-    Location = $Location
-    SkuName = $OsDiskSnapShotSkuName
+    SourceUri    = $virtualMachine.StorageProfile.OsDisk.ManagedDisk.Id
+    Location     = $Location
+    SkuName      = $OsDiskSnapShotSkuName
     CreateOption = 'copy'
 }
 $Snapshot = New-AzSnapshotConfig @snapshotConfigParams
 
+$SnapshotFullName = "$($virtualMachine.StorageProfile.OsDisk.Name)_snapshot_$(Get-Date -Format filedate)"
+$SnapshotName = $SnapshotFullName[0..50] -join ""
+
 $snapshotParams = @{
-    SnapshotName = "$($virtualMachine.StorageProfile.OsDisk.Name)_snapshot_$(Get-Date -Format filedate)"
+    SnapshotName      = $SnapshotName
     ResourceGroupName = $resourceGroupName
-    ErrorAction = 'SilentlyContinue'
+    ErrorAction       = 'SilentlyContinue'
 }
 $SnapshotExists = Get-AzSnapshot @snapshotParams
 
 if ($SnapshotExists) {
     $updateSnapshotParams = @{
-        Snapshot = $Snapshot
-        SnapshotName = "$($virtualMachine.StorageProfile.OsDisk.Name)_snapshot_$(Get-Date -Format filedate)"
+        Snapshot          = $Snapshot
+        SnapshotName      = $SnapshotName
         ResourceGroupName = $resourceGroupName
     }
     $osDiskSnapshot = Update-AzSnapshot @updateSnapshotParams
 }
 else {
     $newSnapshotParams = @{
-        Snapshot = $Snapshot
-        SnapshotName = "$($virtualMachine.StorageProfile.OsDisk.Name)_snapshot_$(Get-Date -Format filedate)"
+        Snapshot          = $Snapshot
+        SnapshotName      = $SnapshotName
         ResourceGroupName = $resourceGroupName
     }
     $osDiskSnapshot = New-AzSnapshot @newSnapshotParams
@@ -145,17 +126,19 @@ else {
 Write-Host "Creating snapshot.. $($osDiskSnapshot.Name)" -ForegroundColor Green
 
 $Snapshots += [PSCustomObject]@{
-    vmName  = $vmName
-    lun     = "nolun"
-    type    = "osdisk"
-    name    = $osDiskSnapshot.Name
-    sku     = $OsDiskSku
-    skuName = $OsdiskSkuName
-    skuTier = $OsDiskSkuTier
-    caching = $OsDiskCaching
-    Tier = $OsDiskTier
-    IOPSReadWrite = $OsDiskIOPSReadWrite
+    vmName                = $vmName
+    lun                   = "nolun"
+    type                  = "osdisk"
+    name                  = $osDiskSnapshot.Name
+    sku                   = $OsDiskSku
+    skuName               = $OsdiskSkuName
+    skuTier               = $OsDiskSkuTier
+    caching               = $OsDiskCaching
+    Tier                  = $OsDiskTier
+    IOPSReadWrite         = $OsDiskIOPSReadWrite
     DataDiskMBpsReadWrite = $OsDiskMBpsReadWrite
+    ResourceId            = $osDiskSnapshot.Id
+    Location              = $osDiskSnapshot.Location
 }
 
 ### Create the snapshot(s) for the Data disks of the supplied VM
@@ -192,24 +175,27 @@ else {
             Write-Verbose "$VMName DataDisk Caching: $($DataDiskCaching)"
 
             $snapshotConfigParams = @{
-                SourceUri = $datadisk.ManagedDisk.Id
-                Location = $Location
-                SkuName = $DataDiskSnapshotSkuName
+                SourceUri    = $datadisk.ManagedDisk.Id
+                Location     = $Location
+                SkuName      = $DataDiskSnapshotSkuName
                 CreateOption = 'copy'
             }
             $Snapshot = New-AzSnapshotConfig @snapshotConfigParams
 
+            $SnapshotFullName = "$($datadisk.name)_snapshot_$(Get-Date -Format filedate)"
+            $SnapshotName = $SnapshotFullName[0..50] -join ""
+
             $snapshotParams = @{
-                SnapshotName = "$($datadisk.name)_snapshot_$(Get-Date -Format filedate)"
+                SnapshotName      = $SnapshotName
                 ResourceGroupName = $resourceGroupName
-                ErrorAction = 'SilentlyContinue'
+                ErrorAction       = 'SilentlyContinue'
             }
             $SnapshotExists = Get-AzSnapshot @snapshotParams
             
             if ($SnapshotExists) {
                 $updateSnapshotParams = @{
-                    Snapshot = $Snapshot
-                    SnapshotName = "$($datadisk.name)_snapshot_$(Get-Date -Format filedate)"
+                    Snapshot          = $Snapshot
+                    SnapshotName      = $SnapshotName
                     ResourceGroupName = $resourceGroupName
                 }
                 $dataDiskSnapshot = Update-AzSnapshot @updateSnapshotParams
@@ -217,10 +203,10 @@ else {
             else {
                 try {
                     $newSnapshotParams = @{
-                        Snapshot = $Snapshot
-                        SnapshotName = "$($datadisk.name)_snapshot_$(Get-Date -Format filedate)"
+                        Snapshot          = $Snapshot
+                        SnapshotName      = $SnapshotName
                         ResourceGroupName = $resourceGroupName
-                        ErrorAction = 'Stop'
+                        ErrorAction       = 'Stop'
                     }
                     $dataDiskSnapshot = New-AzSnapshot @newSnapshotParams
                 }
@@ -231,17 +217,19 @@ else {
 
             Write-Host "Creating snapshot.. $($dataDiskSnapshot.Name)" -ForegroundColor Green
             $Snapshots += [PSCustomObject]@{
-                vmName  = $vmName
-                type    = "datadisk"
-                name    = $dataDiskSnapshot.Name
-                lun     = $datadisk.Lun
-                sku     = $DataDiskSku
-                skuName = $DataDiskDiskSkuName
-                skuTier = $DataDiskSkuTier
-                caching = $DataDiskCaching
-                Tier = $DataDiskTier
-                IOPSReadWrite = $DataDiskIOPSReadWrite
+                vmName                = $vmName
+                type                  = "datadisk"
+                name                  = $dataDiskSnapshot.Name
+                lun                   = $datadisk.Lun
+                sku                   = $DataDiskSku
+                skuName               = $DataDiskDiskSkuName
+                skuTier               = $DataDiskSkuTier
+                caching               = $DataDiskCaching
+                Tier                  = $DataDiskTier
+                IOPSReadWrite         = $DataDiskIOPSReadWrite
                 DataDiskMBpsReadWrite = $DataDiskMBpsReadWrite
+                ResourceId            = $dataDiskSnapshot.Id
+                Location              = $dataDiskSnapshot.Location
             }  
         }
     }

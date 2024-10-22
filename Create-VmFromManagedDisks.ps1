@@ -17,8 +17,8 @@ Register-AzProviderFeature -FeatureName "EncryptionAtHost" -ProviderNamespace "M
 
 # Initialize virtual machine configuration
 $vmConfigParams = @{
-    VMName = $virtualMachineName
-    VMSize = $VirtualMachineSize
+    VMName           = $virtualMachineName
+    VMSize           = $VirtualMachineSize
     EncryptionAtHost = $true
 }
 $VirtualMachine = New-AzVMConfig @vmConfigParams
@@ -27,14 +27,15 @@ $disk = Get-AzDisk -DiskName $osDiskName
 
 # Use the Managed Disk Resource Id to attach it to the virtual machine. Please change the OS type to linux if OS disk has linux OS
 $osDiskParams = @{
-    VM = $VirtualMachine
+    VM            = $VirtualMachine
     ManagedDiskId = $disk.Id
-    CreateOption = 'Attach'
+    CreateOption  = 'Attach'
 }
 if ($disk.OsType -eq "Windows") {
     $osDiskParams.Windows = $true
     $VirtualMachine = Set-AzVMOSDisk @osDiskParams
-} else {
+}
+else {
     $osDiskParams.Caching = $disk.tags.Caching
     $osDiskParams.Linux = $true
     $VirtualMachine = Set-AzVMOSDisk @osDiskParams
@@ -45,12 +46,12 @@ $lunNumber = 0
 foreach ($DataDisk in $DataDisks) {
     $dd = Get-AzDisk -DiskName $DataDisk.Name -ResourceGroupName $DataDisk.resourceGroupName
     $dataDiskParams = @{
-        Name = $dd.Name
-        VM = $VirtualMachine
+        Name          = $dd.Name
+        VM            = $VirtualMachine
         ManagedDiskId = $dd.Id
-        Caching = $DataDisk.Caching
-        Lun = $lunNumber
-        CreateOption = 'Attach'
+        Caching       = $DataDisk.Caching
+        Lun           = $lunNumber
+        CreateOption  = 'Attach'
     }
     $VirtualMachine = Add-AzVMDataDisk @dataDiskParams
     $lunNumber++
@@ -62,11 +63,11 @@ $subnet = Get-AzVirtualNetworkSubnetConfig -Name $virtualNetworkSubnetName -Virt
 
 # Create NIC in the first subnet of the virtual network
 $nicParams = @{
-    Name = "nic-$($VirtualMachineName.ToLower())"
+    Name              = "nic-$($VirtualMachineName.ToLower())"
     ResourceGroupName = $virtualMachineResourceGroupName
-    Location = $Location
-    SubnetId = $subnet.Id
-    Force = $true
+    Location          = $Location
+    SubnetId          = $subnet.Id
+    Force             = $true
 }
 $nic = New-AzNetworkInterface @nicParams
 
@@ -82,21 +83,24 @@ if ($planConfig) {
 
 # Create the virtual machine with Managed Disk
 $vmParameters = @{
-    VM = $VirtualMachine
+    VM                = $VirtualMachine
     ResourceGroupName = $virtualMachineResourceGroupName
-    Location = $Location
+    Location          = $Location
 }
 
 try {
     $VM = New-AzVM @vmParameters -ErrorAction Stop
-} catch {
+}
+catch {
     Write-Warning "$($Error[0].Exception.Message)"
-    if ($error[0].Exception.Message -match "Security type of VM is not compatible with the security type of attached OS Disk") {
+    if ($error[0].Exception.Message -match "Security type of VM is not compatible with the security type of attached OS Disk" -or $error[0].Exception.Message -match "Encryption at host is not supported for VM size Standard_D13_v2") {
         Write-Verbose "Creating VM with standard security type"
         $VirtualMachine.SecurityProfile = $null
         $VirtualMachine = Set-AzVmSecurityProfile -VM $VirtualMachine -SecurityType "Standard"
         $VM = New-AzVM @vmParameters -ErrorAction Continue
-    } else {
+    
+    }
+    else {
         throw "$($Error[0].Exception.Message)"
     }
 }
@@ -105,9 +109,9 @@ try {
 $createdVirtualMachine = Get-AzVM -Name $virtualMachineName -ResourceGroupName $virtualMachineResourceGroupName
 $nic = Get-AzNetworkInterface -ResourceId $createdVirtualMachine.NetworkProfile.NetworkInterfaces[0].Id
 $config = @{
-    Name = $nic.IpConfigurations[0].Name
+    Name             = $nic.IpConfigurations[0].Name
     PrivateIpAddress = $nic.IpConfigurations[0].PrivateIpAddress
-    Subnet = $nic.IpConfigurations[0].subnet
+    Subnet           = $nic.IpConfigurations[0].subnet
 }
 $nic | Set-AzNetworkInterfaceIpConfig @config -Primary | Out-Null
 $nic | Set-AzNetworkInterface | Out-Null

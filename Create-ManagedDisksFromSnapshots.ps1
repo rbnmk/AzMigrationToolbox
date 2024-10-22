@@ -1,22 +1,3 @@
-<#
-.SYNOPSIS
-Script for creating Managed Disks by supplying the name of one or more snapshots. Can be used in conjunction with Create-AzVmSnapshots.
-
-.DESCRIPTION
-This script is intended to be run from PowerShell in your current AzContext.
-
-.EXAMPLE
-.\Create-ManagedDisksFromSnapshots.ps1 -Snapshots $Snapshots -resourceGroupName snapshotrg
-
-.EXAMPLE
-.\Create-ManagedDisksFromSnapshots.ps1 -Snapshots FILESERVER_SNAPSHOT -resourceGroupName snapshotrg
-
-.EXAMPLE
-https://github.com/rbnmk/posh/blob/master/scripts/Create-ManagedDisksFromSnapshots.ps1
-
-Created by RBNMK
-#>
-
 [Cmdletbinding()]
 param (
     [parameter(mandatory = $true)]$Snapshots,
@@ -29,47 +10,6 @@ param (
 $Disks = @()
 $diskNumber = 1
 foreach ($existingSnapshot in $Snapshots) {
-    # Check context
-    $Context = Get-AzContext
-    if (!$Context) {
-        Write-Warning "No Azure context found. Please login to your Azure account first."
-        Connect-AzAccount
-        $Context = Get-AzContext
-        if ($Context.Subscription.Id -ne $srcSubscriptionId) {
-            Write-Warning "The subscription ID provided does not match the current context. Switching to the correct subscription."
-            Set-AzContext -SubscriptionId $srcSubscriptionId
-        }
-    }
-    elseif ($Context.Subscription.Id -ne $srcSubscriptionId) {
-        Write-Warning "The subscription ID provided does not match the current context. Switching to the correct subscription."
-        Set-AzContext -SubscriptionId $srcSubscriptionId
-    }
-
-    # Check if the resource group exists
-    Try {
-        $rgParams = @{
-            ResourceGroupName = $srcResourceGroupName
-            ErrorAction       = 'Stop'
-        }
-        $rg = Get-AzResourceGroup @rgParams
-    }
-    catch {
-        Write-Warning "$($Error[0].Exception.Message)"
-        Break
-    }
-
-    Try {
-        $snapshotParams = @{
-            ResourceGroupName = $srcResourceGroupName
-            SnapshotName      = $existingSnapshot.name
-            ErrorAction       = 'Stop'
-        }
-        $Snapshot = Get-AzSnapshot @snapshotParams
-    }
-    catch {
-        Write-Warning "$($Error[0].Exception.Message)"
-        Break
-    }
 
     Try {
         if ($existingSnapshot.type -eq "osdisk") {
@@ -81,8 +21,8 @@ foreach ($existingSnapshot in $Snapshots) {
         }
 
         $diskConfigParams = @{
-            Location         = $Snapshot.Location
-            SourceResourceId = $Snapshot.Id
+            Location         = $existingSnapshot.Location
+            SourceResourceId = $existingSnapshot.ResourceId
             SkuName          = $existingSnapshot.skuName
             Tier             = $existingSnapshot.Tier
             CreateOption     = 'Copy'
